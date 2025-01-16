@@ -1,0 +1,113 @@
+##Visualization of results
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# CSV 파일 경로 설정
+file_path = "final_merged_file(csv).csv"  # 실제 파일 경로를 여기에 입력
+
+# 데이터 읽기
+data = pd.read_csv(file_path, sep=",", header=0)
+
+# 고유 데이터 타입 추출
+groups = data["compared_data_type"].unique()
+
+groups_select = ['NonCodingVariants', 'CodingVariants', 'early_on_set_GC', 'leukemia', 'melanoma', 'Methylation', 'CDS']
+select_list = ['NonCodingVariants', 'CodingVariants', 'early_on_set_GC', 'leukemia', 'melanoma', 'Methylation']
+
+# 시각화
+plt.figure(figsize=(12, 6))
+
+for group in select_list:
+    # 그룹별 데이터 필터링
+    group_data = data[data["compared_data_type"] == group]
+    
+    # 선 그래프 그리기
+    plt.plot(
+        group_data["Threshold"],
+        group_data["Intersection Ratio (%)"],
+        label=group,
+        marker="o",
+        linewidth=2,       # 선 두께 증가
+        markersize=6,      # 마커 크기 조정
+        linestyle='-',     # 실선 스타일
+    )
+
+# 그래프 꾸미기
+plt.xlabel("Threshold", fontsize=12)
+plt.ylabel("Intersection Ratio (%)", fontsize=12)
+plt.title("Intersection Ratio by Threshold for Different Data Types", fontsize=14)
+plt.legend(title="Data Type", fontsize=10, loc="best", frameon=True)
+plt.grid(True, linestyle="--", alpha=0.5)  # 그리드 추가
+plt.tight_layout()
+
+# 그래프 저장 및 출력
+output_file = f"1.17_plot_{'_'.join(select_list)}.png"
+plt.savefig(output_file)
+print(f"Plot saved as {output_file}")
+
+
+
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 데이터 읽기
+file_path = "gc_output_bed.txt"  # 파일 경로
+df = pd.read_csv(file_path, sep="\t", comment="#")
+
+# 결측치 제거
+df = df.dropna(subset=["8_pct_gc"])
+df = df.dropna(subset=["1_usercol"])
+df = df.dropna(subset=["4_usercol"])
+
+def clean_usercol(value):
+    try:
+        # 숫자형으로 변환 가능하면 정수로 변환
+        return int(value)
+    except ValueError:
+        # 숫자로 변환할 수 없는 값은 그대로 반환 (예: 'X', 'Y')
+        return value
+
+df["1_usercol"] = df["1_usercol"].apply(clean_usercol)
+
+types = ['gene', 'transcript', 'exon', 'CDS', 'start_codon', 'stop_codon', 'five_prime_utr', 'three_prime_utr']
+# 염색체 목록 추출
+chromosomes = df["1_usercol"].unique()  # 염색체 목록
+print(chromosomes)
+# # 원하는 염색체
+# w_chr=[1, 2, 3, 4, 5, 6, 7, 'X', 8, 9, 11, 10, 12, 13, 14, 15, 16, 18, 20, 'Y', 22, 21]
+w_chr=[17,19]
+for type in types:
+    # 그래프 생성
+    plt.figure(figsize=(15, 8))
+
+    for chromosome in chromosomes:
+        
+        subset = df[df["1_usercol"] == chromosome]
+        feature_subset = subset[subset["4_usercol"] == type]  # 특정 타입 선택
+
+        # 분포 계산 (히스토그램 데이터를 선 그래프로 변환)
+        counts, bin_edges = np.histogram(feature_subset["8_pct_gc"], bins=30)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # 구간 중앙값 계산
+
+        # 선 그래프 그리기 (라벨 설정)
+        plt.plot(bin_centers, counts, label=f"Chr {chromosome}", alpha=0.7)
+
+    # 중복된 라벨 필터링
+    handles, labels = plt.gca().get_legend_handles_labels()
+    unique_labels = dict(zip(labels, handles))
+    plt.legend(unique_labels.values(), unique_labels.keys(), title="Chromosome", fontsize=10, bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    # 그래프 꾸미기
+    plt.xlabel("GC Ratio", fontsize=12)
+    plt.ylabel("Frequency", fontsize=12)
+    plt.title(f"GC Ratio Distribution for All Chromosomes ({type})", fontsize=14)
+    plt.tight_layout()
+
+    # 파일 저장
+    output_path = f"/Users/sangwoo/Downloads/gc_1.15_{type}.png"
+    plt.savefig(output_path)
+    print(f"Combined plot saved to {output_path}")
